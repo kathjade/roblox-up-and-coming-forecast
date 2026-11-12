@@ -24,6 +24,7 @@ const task = JSON.parse(readFileSync(join(inputDir, 'task.json'), 'utf8')) as {
   places: number;
   output: string;
   snapshots?: number;
+  window?: { slots: number; slot_minutes: number };
 };
 const marks = readFileSync(join(inputDir, 'history.ndjson'), 'utf8')
   .split('\n')
@@ -78,9 +79,12 @@ const candidates = chart.map((row) => ({
   velocity: rankVelocity(row.universe_id),
 }));
 
-// Estimate the expected rank at a representative 30-hour horizon for the tie-break list.
+// Use the scored window's midpoint rather than assuming a fixed competition horizon.
+const horizon = task.window
+  ? (task.window.slots * task.window.slot_minutes) / 120
+  : 36;
 const top10 = [...candidates]
-  .map((candidate) => ({ ...candidate, expected: candidate.rank + candidate.velocity * 30 }))
+  .map((candidate) => ({ ...candidate, expected: candidate.rank + candidate.velocity * horizon }))
   .sort((a, b) => a.expected - b.expected || a.rank - b.rank || a.id - b.id)
   .slice(0, 10)
   .map((candidate) => candidate.id);
@@ -88,9 +92,8 @@ const top10 = [...candidates]
 const probabilities: Array<{ universe_id: number; place: number; p: number }> = [];
 const unknownMass = 0.12; // Unobserved games can enter from below the captured chart.
 for (let place = 1; place <= places; place++) {
-  // Rank diffusion grows with the square root of the horizon. The recent-rank term
-  // lets the final, hourly history inform the forecast without trusting noisy bursts.
-  const horizon = 30;
+  // Rank diffusion grows with the square root of the window's representative horizon.
+  // Keep a small floor for the close-in first hours and let uncertainty grow gradually.
   const sigma = 2.0 + 0.38 * Math.sqrt(horizon);
   const weights = candidates.map((candidate) => {
     const projectedRank = Math.max(1, Math.min(130, candidate.rank + candidate.velocity * horizon));
