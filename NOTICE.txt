@@ -1,0 +1,1 @@
+The practice input history bundled in the official make.fun kit is sourced from make.fun's Roblox chart recorder and the MIT-licensed kenny-dhub/roblox-snapshots archive. See the competition kit's input/NOTICE.txt for source details and the archive's full MIT license. The practice input and competition kit are not included in this entry repository.
